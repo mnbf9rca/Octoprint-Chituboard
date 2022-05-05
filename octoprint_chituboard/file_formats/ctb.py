@@ -8,43 +8,39 @@ import png
 from typedstruct import LittleEndianStruct, StructType
 
 from . import SlicedModelFile
-from .cipher import cipher86
+from .cipher import cipher86, xorCipher, computeSHA256Hash
 from .rle import *
+
+import base64
+from Crypto.Cipher import AES
+
+MAGIC_CBT_ENCRYPTED = 0x12FD0107
+HASH_LENGTH = 32
+BHASH = b'32'
+
+about_software = "UVtools"
+secret1 = "hQ36XB6yTk+zO02ysyiowt8yC1buK+nbLWyfY40EXoU="
+secret2 = "Wld+ampndVJecmVjYH5cWQ=="
+bigfoot = xorCipher(base64.b64decode(secret1, validate=True), about_software.encode())
+cookiemonster = xorCipher(base64.b64decode(secret2, validate=True), about_software.encode())
 
 @dataclass(frozen=True)
 class CTBHeader(LittleEndianStruct):
-	"""
-	Gets a magic number identifying the file type .0x12fd_0019 for cbddlp, 0x12fd_0086 for ctb
-	"""
 	magic: int = StructType.uint32()
-	version: int = StructType.uint32()
-	bed_size_x_mm: float = StructType.float32()
-	bed_size_y_mm: float = StructType.float32()
-	bed_size_z_mm: float = StructType.float32()
-	unknown_01: int = StructType.uint32()
-	unknown_02: int = StructType.uint32()
-	height_mm: float = StructType.float32()
-	layer_height_mm: float = StructType.float32()
-	layer_exposure: float = StructType.float32()
-	bottom_exposure: float = StructType.float32()
-	layer_off_time: float = StructType.float32()
-	bottom_count: int = StructType.uint32()
-	resolution_x: int = StructType.uint32()
-	resolution_y: int = StructType.uint32()
-	high_res_preview_offset: int = StructType.uint32()
-	layer_defs_offset: int = StructType.uint32()
-	layer_count: int = StructType.uint32()
-	low_res_preview_offset: int = StructType.uint32()
-	print_time: int = StructType.uint32()
-	projector: int = StructType.uint32()
-	param_offset: int = StructType.uint32()
-	param_size: int = StructType.uint32()
-	anti_alias_level: int = StructType.uint32()
-	light_pwm: int = StructType.uint16()
-	bottom_light_pwm: int = StructType.uint16()
-	encryption_seed: int = StructType.uint32() # Compressed grayscale image encryption key
-	slicer_offset: int = StructType.uint32()
 	slicer_size: int = StructType.uint32()
+	slicer_offset: int =  StructType.uint32()
+	unknown_01: int =  StructType.uint32()
+	unknown_02: int =  StructType.uint32()
+	signature_size: int =  StructType.uint32()
+	signature_offset: int = StructType.uint32()
+	unknown_03: int =  StructType.uint32()
+	unknown_04: int = StructType.uint16()
+	unknown_05: int = StructType.uint16()
+	unknown_06: int = StructType.uint32()
+	unknown_07: int =  StructType.uint32()
+	unknown_08: int =  StructType.uint32()
+	
+
 
 @dataclass(frozen=True)
 class CTBParam(LittleEndianStruct):
@@ -70,42 +66,112 @@ class CTBParam(LittleEndianStruct):
 
 @dataclass(frozen=True)
 class CTBSlicer(LittleEndianStruct):
-	skip_0: int = StructType.uint32()
-	skip_1: int = StructType.uint32()
-	skip_2: int = StructType.uint32()
-	skip_3: int = StructType.uint32()
-	skip_4: int = StructType.uint32()
-	skip_5: int = StructType.uint32()
-	skip_6: int = StructType.uint32()
-	machine_offset: int = StructType.uint32()
-	machine_size: int = StructType.uint32()
-	encryption_mode: int = StructType.uint32()
-	time_seconds: int = StructType.uint32()
+	checksum_value: int = StructType.uint64()
+	layer_table_offset: int = StructType.uint32()
+	display_width: float = StructType.float32()
+	display_height: float = StructType.float32()
+	machine_z: float = StructType.float32()
 	unknown_01: int = StructType.uint32()
-	version_patch: int = StructType.unsigned_char()
-	version_minor: int = StructType.unsigned_char()
-	version_major: int = StructType.unsigned_char()
-	version_release: int = StructType.unsigned_char()
 	unknown_02: int = StructType.uint32()
+	total_height_mm: float = StructType.float32()
+	layer_height_mm: float = StructType.float32()
+	exposure_time: float = StructType.float32()
+	bottom_exposure_time: float = StructType.float32()
+	light_off_delay: float = StructType.float32()
+	bottom_layer_count: int = StructType.uint32()
+	resolution_x: int = StructType.uint32()
+	resolution_y: int = StructType.uint32()
+	layer_count: int = StructType.uint32()
+	large_preview_offset: int = StructType.uint32()
+	small_preview_offset: int = StructType.uint32()
+	print_time: int = StructType.uint32()
+	projector_type: int = StructType.uint32()
+	bottom_lift_height: float = StructType.float32()
+	bottom_lift_speed: float = StructType.float32()
+	lift_height: float = StructType.float32()
+	lift_speed: float = StructType.float32()
+	retract_speed: float = StructType.float32()
+	material_mm: float = StructType.float32()
+	material_grams: float = StructType.float32()
+	material_cost: float = StructType.float32()
+	bottom_light_off_delay: float = StructType.float32()
 	unknown_03: int = StructType.uint32()
-	unknown_04: float = StructType.float32()
+	light_pwm: int = StructType.uint16()
+	bottom_light_pwm: int = StructType.uint16()
+	layer_xor_key: int = StructType.uint32()
+	bottom_lift_height2: float = StructType.float32()
+	bottom_lift_speed2: float = StructType.float32()
+	lift_height2: float = StructType.float32()
+	lift_speed2: float = StructType.float32()
+	retract_height2: float = StructType.float32()
+	retract_speed2: float = StructType.float32()
+	rest_time_after_lift: float = StructType.float32()
+	machine_name_offset: int = StructType.uint32()
+	machine_name_size: int = StructType.uint32()
+	per_layer_settings: int = StructType.uint32()
+	unknown_04: int = StructType.uint32()
 	unknown_05: int = StructType.uint32()
+	rest_time_after_retract: float = StructType.float32()
+	rest_time_after_lift2: float = StructType.float32()
+	transition_layer_count: int = StructType.uint32()
+	bottom_retract_speed: float = StructType.float32()
+	bottom_retract_speed2: float = StructType.float32()
+	padding1: int = StructType.uint32()
+	four1: float = StructType.float32()
+	padding2: int = StructType.uint32()
+	four2: float = StructType.float32()
+	rest_time_after_retract2: float = StructType.float32()
+	rest_time_after_lift3: float = StructType.float32()
+	rest_time_before_lift: float = StructType.float32()
+	bottom_retract_height2: float = StructType.float32()
 	unknown_06: int = StructType.uint32()
-	unknown_07: float = StructType.float32()
+	unknown_07: int = StructType.uint32()
+	unknown_08: int = StructType.uint32()
+	last_layer_index: int = StructType.uint32()
+	padding3: int = StructType.uint32()
+	padding4: int = StructType.uint32()
+	padding5: int = StructType.uint32()
+	padding6: int = StructType.uint32()
+	disclaimer_offset: int = StructType.uint32()
+	disclaimer_size: int = StructType.uint32()
+	padding7: int = StructType.uint32()
+	padding8: int = StructType.uint32()
+	padding9: int = StructType.uint32()
+	padding10: int = StructType.uint32()
+	#machine_name: bytes = StructType.chars()
 
+@dataclass(frozen=True)
+class CTBLayerPointer(LittleEndianStruct):
+	layer_offset: int = StructType.uint32()
+	padding_01: int = StructType.uint32()
+	layer_table_size: int = StructType.uint32()
+	padding_02: int = StructType.uint32()
+	
 
 @dataclass(frozen=True)
 class CTBLayerDef(LittleEndianStruct):
-	layer_height_mm: float = StructType.float32()
-	layer_exposure: float = StructType.float32()
-	layer_off_time: float = StructType.float32()
-	image_offset: int = StructType.uint32()
-	image_length: int = StructType.uint32()
-	unknown_01: int = StructType.uint32()
-	image_info_size: int = StructType.uint32()
+	table_size: int = StructType.uint32()
+	position_z: float = StructType.float32()
+	exposure_time: float = StructType.float32()
+	light_off_delay: float = StructType.float32()
+	layer_def_offset: int = StructType.uint32()
 	unknown_02: int = StructType.uint32()
+	data_length: int = StructType.uint32()
 	unknown_03: int = StructType.uint32()
-
+	encrypted_data_offset: int = StructType.uint32()
+	encrypted_data_length: int = StructType.uint32()
+	lift_height: float = StructType.float32()
+	lift_speed: float = StructType.float32()
+	lift_height2: float = StructType.float32()
+	lift_speed2: float = StructType.float32()
+	retract_speed: float = StructType.float32()
+	retract_height2: float = StructType.float32()
+	retract_speed2: float = StructType.float32()
+	rest_time_before_lift: float = StructType.float32()
+	rest_time_after_lift: float = StructType.float32()
+	rest_time_after_retract: float = StructType.float32()
+	light_pwm: float = StructType.float32()
+	unknown_06: int = StructType.uint32()
 
 @dataclass(frozen=True)
 class CTBPreview(LittleEndianStruct):
@@ -172,11 +238,14 @@ def _read_layer_array(width: int, height: int, seed:int, layernum:int, data: byt
 	data = cipher86(seed,layernum,data)
 	return read_rle7array(width, height, data)
 	
-def get_printarea(resolution,header,image):
-	resolutionX = header.resolution_x
-	resolutionY = header.resolution_y
-	PixelSize = (header.bed_size_x_mm*1000)/resolutionX
-	rows_with_white= np.max(image, axis=1)
+def get_printarea(resolution,slicer,image):
+	resolutionX = slicer.resolution_x
+	resolutionY = slicer.resolution_y
+	PixelSize = (slicer.display_width*1000)/resolutionX
+	try:
+		rows_with_white= np.max(image, axis=1) #1
+	except:
+		raise Exception(image)
 	col_with_white= np.max(image, axis=0)
 	row_low = np.argmax(rows_with_white)
 	row_high = -np.argmax(rows_with_white[::-1])
@@ -188,12 +257,30 @@ def get_printarea(resolution,header,image):
 	maxY = float((resolutionX+col_high)*PixelSize/1000)
 	width = float(maxX-minX)
 	depth = float(maxY-minY)
-	height = float(header.height_mm)
+	height = float(slicer.total_height_mm)
 	results = {}
 	results["printing_area"] = {"minX":minX, "maxX":maxX, "minY":minY,"maxY":maxY}
 	results["dimensions"] = {"width":width, "depth":depth, "height":height}
 	return results
 
+def aes_crypt(enc: bytes, encrypt: bool):
+	Cipher = AES.new(bytes(bigfoot), AES.MODE_CBC, bytes(cookiemonster))
+
+	temp = bytearray()
+	temp += enc
+	if len(enc) % 16 != 0:
+		"""
+		temp = bytearray([0] * (((len(enc) // 16) + 1) * 16))
+		pos = 0
+		temp[pos:pos+len(enc)] = enc
+		enc = bytes(temp)
+		"""
+		temp += ((16 - len(enc) % 16)* 'X')
+
+	if encrypt:
+		return Cipher.encrypt(bytes(temp))
+	else:
+		return Cipher.decrypt(bytes(temp))
 
 @dataclass(frozen=True)
 class CTBFile(SlicedModelFile):
@@ -201,67 +288,103 @@ class CTBFile(SlicedModelFile):
 	def read(self, path: pathlib.Path) -> "CTBFile":
 		with open(str(path), "rb") as file:
 			ctb_header = CTBHeader.unpack(file.read(CTBHeader.get_size()))
-			
+			if ctb_header.magic != MAGIC_CBT_ENCRYPTED:
+				raise TypeError("Not a valid encrypted CTB file\n" + str(ctb_header.magic) + "\n" + str(MAGIC_CBT_ENCRYPTED))
+			"""
 			file.seek(ctb_header.param_offset)
 			ctb_param = CTBParam.unpack(file.read(CTBParam.get_size()))
-			
+			"""
 			file.seek(ctb_header.slicer_offset)
-			ctb_slicer = CTBSlicer.unpack(file.read(CTBSlicer.get_size()))
+			encrypted_block = file.read(ctb_header.slicer_size)
+			
+			decrypted_block = aes_crypt(encrypted_block, False)
+			try:
+				ctb_slicer = CTBSlicer.unpack(decrypted_block)
+			except:
+				raise Exception("len(decrypted_block) = " + str(len(decrypted_block)))
 
-			file.seek(ctb_slicer.machine_offset)
-			printer_name = file.read(ctb_slicer.machine_size).decode()
+			file.seek(ctb_slicer.machine_name_offset)
+			printer_name = file.read(ctb_slicer.machine_name_size).decode()
 
+			# Validate hash
+			#checksum_bytes = struct.pack(">L", ctb_slicer.checksum_value)
+			checksum_bytes = ctb_slicer.checksum_value.to_bytes(8, 'little')
+			checksum_hash = computeSHA256Hash(checksum_bytes)
+			encrypted_hash = aes_crypt(checksum_hash, True)
+
+			file.seek(-HASH_LENGTH, 2)
+			hash = file.read(HASH_LENGTH)
+			if not (set(hash) == set(encrypted_hash)):
+				raise TypeError("The file checksum does not match, malformed file.\n" + str(hash) + "\n" + str(encrypted_hash) + "\n" + str(int.from_bytes(hash, 'little')) + "\n" + str(int.from_bytes(encrypted_hash, 'little')) + "\n" + str(int.from_bytes(checksum_hash, 'little')))
+				#pass
+
+			LayersPointer = [None] * ctb_slicer.layer_count
+			for layer_index in range(0, ctb_slicer.layer_count):
+				file.seek(ctb_slicer.layer_table_offset)
+				LayersPointer[layer_index] = CTBLayerPointer.unpack(file.read(CTBLayerPointer.get_size()))
+
+			LayersDefinition = [None] * ctb_slicer.layer_count
+			buggy_layers = []
 			end_byte_offset_by_layer = []
-			for layer in range(0, ctb_header.layer_count):
-				file.seek(ctb_header.layer_defs_offset + layer * CTBLayerDef.get_size())
-				layer_def = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
+			for layer in range(0, ctb_slicer.layer_count):
+				file.seek(LayersPointer[layer].layer_offset)
+				LayersDefinition[layer] = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
 				end_byte_offset_by_layer.append(
-					layer_def.image_offset + layer_def.image_length
+					LayersDefinition[layer].encrypted_data_offset + LayersDefinition[layer].encrypted_data_length
 				)
-			
-			file.seek(ctb_header.layer_defs_offset + 0 * CTBLayerDef.get_size())
+	
+			file.seek(LayersPointer[0].layer_offset + 0 * CTBLayerDef.get_size())
 			first_layer = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
-			
-			file.seek(first_layer.image_offset)
-			data = file.read(first_layer.image_length)
 			results = {}
-			image = _read_layer_array(
-				ctb_header.resolution_x,
-				ctb_header.resolution_y,
-				ctb_header.encryption_seed,
-				0,
-				data)
-			#try:
-			imlayer = np.array(image)
-			results = get_printarea(imlayer.shape,ctb_header,imlayer)
-			#except:
-			#	results["printing_area"] = {'minX': 0.0, 'minY': 0.0}
-			#	results["dimensions"] = {'width':len(image), 'depth':len(image[0]) , 'height': ctb_header.height_mm}
+			
+			if first_layer.encrypted_data_length > 0:
+				file.seek(first_layer.encrypted_data_offset)
+				encrypted_data = file.read(first_layer.encrypted_data_length)
+
+				# Decrypt RLEData here
+				data = aes_crypt(encrypted_data, False)
+				image = _read_layer_array(
+					ctb_slicer.resolution_x,
+					ctb_slicer.resolution_y,
+					ctb_slicer.layer_xor_key,
+					0,
+					data)
+
+				#try:
+				imlayer = np.array(image)
+				results = get_printarea(imlayer.shape,ctb_slicer,imlayer)
+				#except:
+				#	results["printing_area"] = {'minX': 0.0, 'minY': 0.0}
+				#	results["dimensions"] = {'width':len(image), 'depth':len(image[0]) , 'height': ctb_header.height_mm}
+			else:
+				results["printingArea"] = {'minX': 0.0, 'minY': 0.0}
+				results["dimensions"] = {'width':0, 'depth':0 , 'height': ctb_slicer.layer_height_mm}
 
 			return CTBFile(
 				filename=path.name,
 				bed_size_mm=(
-					round(ctb_header.bed_size_x_mm, 4),
-					round(ctb_header.bed_size_y_mm, 4),
-					round(ctb_header.bed_size_z_mm, 4),
+					round(ctb_slicer.display_width, 4),
+					round(ctb_slicer.display_height, 4),
+					round(ctb_slicer.machine_z, 4),
 				),
-				height_mm=ctb_header.height_mm,
-				layer_height_mm=ctb_header.layer_height_mm,
-				layer_count=ctb_header.layer_count,
-				resolution=(ctb_header.resolution_x, ctb_header.resolution_y),
-				print_time_secs=ctb_header.print_time,
-				volume=ctb_param.volume_ml,
+				height_mm=ctb_slicer.total_height_mm,
+				layer_height_mm=ctb_slicer.layer_height_mm,
+				layer_count=ctb_slicer.layer_count,
+				resolution=(ctb_slicer.resolution_x, ctb_slicer.resolution_y),
+				print_time_secs=ctb_slicer.print_time,
+				volume=ctb_slicer.material_mm,
 				end_byte_offset_by_layer=end_byte_offset_by_layer,
+				# Unable to find these in new slicer format
 				slicer_version=".".join(
 					[
-						str(ctb_slicer.version_release),
-						str(ctb_slicer.version_major),
-						str(ctb_slicer.version_minor),
-						str(ctb_slicer.version_patch),
+						str(1),
+						str(1),
+						str(9),
+						str(1),
 					]
 				),
 				printer_name=printer_name,
-				printing_area = results["printing_area"],
+				printing_area = results["printingArea"],
 				dimensions = results["dimensions"],
 			)
 	
@@ -270,45 +393,67 @@ class CTBFile(SlicedModelFile):
 		with open(str(path), "rb") as file:
 			ctb_header = CTBHeader.unpack(file.read(CTBHeader.get_size()))
 			
-			file.seek(ctb_header.param_offset)
-			ctb_param = CTBParam.unpack(file.read(CTBParam.get_size()))
-			
 			file.seek(ctb_header.slicer_offset)
-			ctb_slicer = CTBSlicer.unpack(file.read(CTBSlicer.get_size()))
-			
+			encrypted_block = file.read(CTBSlicer.get_size())
+
+			decrypted_block = aes_crypt(encrypted_block, False)
+			print("len(decrypted_block) = " + str(len(decrypted_block))) 
+			try:
+				ctb_slicer = CTBSlicer.unpack(decrypted_block)
+			except:
+				raise Exception("len(decrypted_block) = " + str(len(decrypted_block)))
+
+			# Validate hash
+			checksum_bytes = struct.pack("<Q", ctb_slicer.checksum_value)
+			checksum_hash = computeSHA256Hash(checksum_bytes)
+			encrypted_hash = aes_crypt(checksum_hash, True)
+
+			file.seek(-HASH_LENGTH, 2)
+			hash = file.read(HASH_LENGTH)
+			if not (set(hash) == set(encrypted_hash)):
+				raise TypeError("The file checksum does not match, malformed file.\n" + str(hash) + "\n" + str(encrypted_hash))
+				#pass
+
+			LayersPointer = [None] * ctb_slicer.layer_count
+			for layer_index in range(0, ctb_slicer.layer_count):
+				file.seek(ctb_slicer.layer_table_offset)
+				LayersPointer[layer_index] = CTBLayerPointer.unpack(file.read(CTBLayerPointer.get_size()))
+
+			LayersDefinition = [None] * ctb_slicer.layer_count
+			buggy_layers = []
 			end_byte_offset_by_layer = []
-			for layer in range(0, ctb_header.layer_count):
-				file.seek(ctb_header.layer_defs_offset + layer * CTBLayerDef.get_size())
-				layer_def = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
+			for layer in range(0, ctb_slicer.layer_count):
+				file.seek(LayersPointer[layer].layer_offset)
+				LayersDefinition[layer] = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
 				end_byte_offset_by_layer.append(
-					layer_def.image_offset + layer_def.image_length
+					LayersDefinition[layer].encrypted_data_offset + LayersDefinition[layer].encrypted_data_length
 				)
 
 			voume_ml = metadata["filament"]["tool0"]["volume"]
 			return CTBFile(
 					filename=path.name,
 					bed_size_mm=(
-						round(ctb_header.bed_size_x_mm, 4),
-						round(ctb_header.bed_size_y_mm, 4),
-						round(ctb_header.bed_size_z_mm, 4),
+						round(ctb_slicer.display_width, 4),
+						round(ctb_slicer.display_height, 4),
+						round(ctb_slicer.machine_z, 4),
 					),
-					height_mm=ctb_header.height_mm,
+					height_mm=ctb_slicer.total_height_mm,
 					layer_height_mm=metadata["layer_height_mm"],
 					layer_count=metadata["layer_count"],
-					resolution=(ctb_header.resolution_x, ctb_header.resolution_y),
+					resolution=(ctb_slicer.resolution_x, ctb_slicer.resolution_y),
 					print_time_secs = metadata["estimatedPrintTime"],
 					volume=metadata["filament"]["tool0"]["volume"],
 					end_byte_offset_by_layer=end_byte_offset_by_layer,
 					slicer_version=".".join(
 						[
-							str(ctb_slicer.version_release),
-							str(ctb_slicer.version_major),
-							str(ctb_slicer.version_minor),
-							str(ctb_slicer.version_patch),
+							str(1),
+							str(1),
+							str(9),
+							str(1),
 						]
 					),
 					printer_name = metadata["printer_name"],
-					printing_area = metadata["printing_area"],
+					printing_area = metadata["printingArea"],
 					dimensions = metadata["dimensions"],
 				)
 

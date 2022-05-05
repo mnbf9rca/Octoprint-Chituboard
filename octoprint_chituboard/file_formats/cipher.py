@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-
+import hashlib
 
 @dataclass
 class Keyring86:
@@ -87,5 +87,18 @@ def cipherFDG(seed, slicenum, data):
 	else:
 		kr = KeyringFDG(seed,slicenum)
 		out = kr.Read(data)
-		return out
+		return 
+		
+def computeSHA256Hash(input: bytes):
+	output = hashlib.sha256()
+	output.update(input)
+	return output.digest()
 
+# https://github.com/sn4k3/UVtools/blob/2625c13cc3179a55865e5594180050258ab60a95/UVtools.Core/Extensions/CryptExtensions.cs#L59
+# Might not work, see if need to convert text to bytes
+def xorCipher(text: bytes, key: bytes):
+	output = bytearray(len(text))
+	for i in range(len(text)):
+		output.append(text[i] ^ key[i % len(key)])
+
+	return output

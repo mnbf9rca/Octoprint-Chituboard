@@ -25,6 +25,7 @@ from octoprint.util import (
     sanitize_ascii,
     to_unicode,
 )
+
 from pathlib import Path
 import quopri
 import logging
@@ -77,6 +78,7 @@ class Sla_printer(Printer):
 
 	def __init__(self, fileManager, analysisQueue, printerProfileManager):
 		self._logger = logging.getLogger(__name__)
+		#self._logger = logger
 		self._logger_job = logging.getLogger("{}.job".format(__name__))
 		self._analysisQueue = analysisQueue
 		self._fileManager = fileManager
@@ -118,13 +120,17 @@ class Sla_printer(Printer):
 			path_on_disk = self._fileManager.path_on_disk(origin, path)
 			file_format = get_file_format(path_on_disk)
 			try:
+				
 				fileData = self._fileManager.get_metadata(
 						origin,
 						path_on_disk,
 					)
-				
+
 				sliced_model_file = file_format.read_dict(Path(path_on_disk),fileData["analysis"])
 				self._logger.info("Metadata %s" % str(fileData))
+
+				#sliced_model_file = file_format.read(path_on_disk)
+				#self._logger.info("Metadata %s" % str(fileData))
 			except Exception as inst:
 				self._logger.debug("yaml load output failed, analysis type:", inst)
 				sliced_model_file = file_format.read(Path(path_on_disk))	
