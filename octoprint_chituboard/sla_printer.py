@@ -342,7 +342,7 @@ class Sla_printer(Printer):
 				or not self._comm.isOperational()
 				or self._comm.isPrinting()
 			):
-				
+				self.log_lines("Unable to start print. Printer not operational or comm is unavailable")
 				return
 
 			with self._selectedFileMutex:
@@ -381,11 +381,13 @@ class Sla_printer(Printer):
 							# ~ tags=tags | {"trigger:comm.start_print",}),
 						self._logger.info("selected file")
 						self._logger.info("current file pos: ", self._comm._currentFile.pos)
+						self.log_lines("current file pos :", self._comm._currentFile.pos)
 					self._logger.info("current file pos: ", self._comm._currentFile.pos)
 					self._logger.info("is active: ", self._comm._active)
 					self._logger.info("is starting: {} is printing: {}".format(self._comm.isStarting(), self._comm.isPrinting()))
 					
 					self._logger.info("starting print")
+					self.log_lines("starting print")
 					self.commands(
 						"M6030 '{filename}'".format(
 							filename=cur_file
@@ -396,11 +398,14 @@ class Sla_printer(Printer):
 						tags=tags)
 						# ~ | {"trigger:comm.start_print",})
 					self._logger.info("start print, send M6030 <filename>", str(user))
+					self.log_lines("start print, send M6030 <filename>", str(user))
 										
 				# now make sure we actually do something, up until now we only filled up the queue
 				self._comm._continue_sending()
 				self._logger.info("start print, send M6030 <filename>, continue sending")
+				self.log_lines("start print, send M6030 <filename>, continue sending")
 			except Exception:
+				self.log_lines("Error while trying to start printing")
 				self._logger.exception("Error while trying to start printing")
 				self._comm._trigger_error(get_exception_string(), "start_print")
 				
@@ -412,6 +417,7 @@ class Sla_printer(Printer):
 		self._comm._pauseWaitTimeLost = 0.0
 		
 		self._logger.info("Start Print")
+		self.log_lines("Start Print")
 		self._logger.info("self._selectedFile: %s" % self._selectedFile)
 		self._logger.info("self._selectedFile: %s" % self._selectedFile["filename"])
 		cur_file = self._selectedFile["filename"]
@@ -443,6 +449,7 @@ class Sla_printer(Printer):
 		elif self.fileType == "sla_bin":
 			on_success()
 			print("printjob canceled")
+			self.log_lines("printjob canceled")
 			
 	def commands(self, commands, 
 		cmd_type=None, 
