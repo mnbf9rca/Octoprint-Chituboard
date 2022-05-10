@@ -151,11 +151,11 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		# get current layer number and total layer count
 		# and convert to string
 		result = "-"
-		if self._printer._sliced_model_file and self._printer.is_printing():
+		if self.sla_printer._sliced_model_file and self.sla_printer.is_printing():
 			
 			result = "{}/{}".format(
-				self._printer.get_current_layer(),
-				self._printer._sliced_model_file.layer_count
+				self.sla_printer.get_current_layer(),
+				self.sla_printer._sliced_model_file.layer_count
 			)
 		return flask.jsonify(layerString = result)
 	
@@ -164,14 +164,14 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 	##############################################
 	# update layer number on client side on print progress
 	def on_print_progress(self, storage, path, progress):
-		if not self._printer.is_printing():
+		if not self.sla_printer.is_printing():
 			return
 		result = "-"
-		if self._printer._sliced_model_file:
+		if self.sla_printer._sliced_model_file:
 			
 			result = "{}/{}".format(
-				self._printer.get_current_layer(),
-				self._printer._sliced_model_file.layer_count
+				self.sla_printer.get_current_layer(),
+				self.sla_printer._sliced_model_file.layer_count
 			)
 		self._plugin_manager.send_plugin_message("Chituboard",dict(layerString = result))
 	
@@ -481,11 +481,11 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		"""
 		if "End read" in line:
 			try:
-				self._printer._comm._changeState(self._printer._comm.STATE_FINISHING)
-				self._printer._comm._currentFile.done = True
-				self._printer._comm._currentFile.pos = 0
-				self._printer._sliced_model_file = None
-				self._printer._comm._callback.on_comm_print_job_done()
+				self.sla_printer._comm._changeState(self._printer._comm.STATE_FINISHING)
+				self.sla_printer._comm._currentFile.done = True
+				self.sla_printer._comm._currentFile.pos = 0
+				self.sla_printer._sliced_model_file = None
+				self.sla_printer._comm._callback.on_comm_print_job_done()
 
 			except Exception:
 				self._logger.exception("Error while changing state")
@@ -530,8 +530,8 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 						elif self.finished_print == 2:
 							# ~ self._printer._comm._changeState(self._printer._comm.STATE_OPERATIONAL)
 							self._logger.info("printer now operational")
-							self._printer.unselect_file()
-							self._printer._sliced_model_file = None
+							self.sla_printer.unselect_file()
+							self.sla_printer._sliced_model_file = None
 							# ~ self._printer._comm._currentFile = None
 							self.finished_print == None
 							return line, False
