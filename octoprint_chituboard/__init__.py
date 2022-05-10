@@ -347,8 +347,8 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		if end_msg == True:
 			try:
 				# for some reason the printer doesn't properly 
-				self._printer._comm._changeState(self._printer._comm.STATE_OPERATIONAL)
-				self._printer._comm._currentFile = None
+				self.sla_printer._comm._changeState(self._printer._comm.STATE_OPERATIONAL)
+				self.sla_printer._comm._currentFile = None
 			except Exception:
 				self._logger.exception("Error while changing state")
 		return line
@@ -374,7 +374,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 				self._logger.info("Error parsing M400 response ", type(inst), inst)
 			else:
 				rewritten = line.replace(matchB.group(0), " T:0 /0 B:{} /{}\r\n".format(actual,target))
-		if matchD and self._printer.is_pausing():
+		if matchD and self.sla_printer.is_pausing():
 			try:
 				current = int(matchD.group('current'))
 				total = int(matchD.group('total'))
@@ -384,8 +384,8 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 			else:
 				if paused == 1 and current > 0:
 				# printer is now paused
-					self._printer._comm._record_pause_data = True
-					self._printer._comm._changeState(self._printer._comm.STATE_PAUSED)
+					self.sla_printer._comm._record_pause_data = True
+					self.sla_printer._comm._changeState(self._printer._comm.STATE_PAUSED)
 					Xpos = matchX.group("value")
 					Ypos = matchY.group("value")
 					Zpos = matchZ.group("value")
@@ -481,7 +481,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		"""
 		if "End read" in line:
 			try:
-				self.sla_printer._comm._changeState(self._printer._comm.STATE_FINISHING)
+				self.sla_printer._comm._changeState(self.sla_printer._comm.STATE_FINISHING)
 				self.sla_printer._comm._currentFile.done = True
 				self.sla_printer._comm._currentFile.pos = 0
 				self.sla_printer._sliced_model_file = None

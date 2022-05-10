@@ -3,6 +3,7 @@ from typing import Mapping, Set, Type
 
 from . import SlicedModelFile
 from .ctb import CTBFile
+from .ctb_encrypted import CTBEncryptedFile, can_process
 from .cbddlp import CBDDLPFile
 from .fdg import FDGFile
 from .photon import PhotonFile
@@ -25,6 +26,9 @@ def get_file_format(filename: str) -> Type[SlicedModelFile]:
 	(_, extension) = os.path.splitext(filename)
 
 	file_format = EXTENSION_TO_FILE_FORMAT.get(extension.lower())
+
+	if file_format is CTBFile:
+		file_format = can_process(filename)
 
 	assert file_format is not None
 	return file_format
