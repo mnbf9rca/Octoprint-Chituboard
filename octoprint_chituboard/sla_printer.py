@@ -473,54 +473,54 @@ class Sla_printer(Printer):
 		for command in commands:
 			self._comm.sendCommand(command, cmd_type=cmd_type, part_of_job=part_of_job, tags=tags, force=force)
 			
-	# ~ def on_comm_file_selected(self, full_path, size, sd, user=None):
-		# ~ filename = None
-		# ~ if full_path is not None:
-			# ~ payload = self._payload_for_print_job_event(
-				# ~ location=FileDestinations.SDCARD if sd else FileDestinations.LOCAL,
-				# ~ print_job_file=full_path,
-				# ~ print_job_user=user,
-				# ~ action_user=user,
-			# ~ )
-			# ~ filename = Path(full_path).name
-			# ~ eventManager().fire(Events.FILE_SELECTED, payload)
-			# ~ self._logger_job.info(
-				# ~ "Print job selected - origin: {}, path: {}, owner: {}, user: {}".format(
-					# ~ payload.get("origin"),
-					# ~ payload.get("path"),
-					# ~ payload.get("owner"),
-					# ~ payload.get("user"),
-				# ~ )
-			# ~ )
-		# ~ else:
-			# ~ eventManager().fire(Events.FILE_DESELECTED)
-			# ~ self._logger_job.info(
-				# ~ "Print job deselected - user: {}".format(user if user else "n/a")
-			# ~ )
-		# ~ estimatedprintTime = None
-		# ~ if filename is not None:
-			# ~ file_format = get_file_format("/home/pi/.octoprint/uploads/resin/"+filename)
-			# ~ sliced_model_file = file_format.read(Path("/home/pi/.octoprint/uploads/resin/"+filename))
-			# ~ estimatedprintTime = sliced_model_file.print_time_secs
-			# ~ self._selectedFile["estimatedPrintTime"] = estimatedprintTime
+	def on_comm_file_selected(self, full_path, size, sd, user=None):
+		filename = None
+		if full_path is not None:
+			payload = self._payload_for_print_job_event(
+				location=FileDestinations.SDCARD if sd else FileDestinations.LOCAL,
+				print_job_file=full_path,
+				print_job_user=user,
+				action_user=user,
+			)
+			filename = Path(full_path).name
+			eventManager().fire(Events.FILE_SELECTED, payload)
+			self._logger_job.info(
+				"Print job selected - origin: {}, path: {}, owner: {}, user: {}".format(
+					payload.get("origin"),
+					payload.get("path"),
+					payload.get("owner"),
+					payload.get("user"),
+				)
+			)
+		else:
+			eventManager().fire(Events.FILE_DESELECTED)
+			self._logger_job.info(
+				"Print job deselected - user: {}".format(user if user else "n/a")
+			)
+		estimatedprintTime = None
+		if filename is not None:
+			file_format = get_file_format("/home/pi/.octoprint/uploads/resin/"+filename)
+			sliced_model_file = file_format.read(Path("/home/pi/.octoprint/uploads/resin/"+filename))
+			estimatedprintTime = sliced_model_file.print_time_secs
+			self._selectedFile["estimatedPrintTime"] = estimatedprintTime
+				
+		self._setJobData(full_path, size, sd, user=user)
+		if self._selectedFile is not None:
+			self._selectedFile["estimatedPrintTime"] = estimatedprintTime
+			self._selectedFile["estimatedPrintTimeType"] = "analysis"
+		self._stateMonitor.set_state(
+			self._dict(
+				text=self.get_state_string(),
+				flags=self._getStateFlags(),
+				error=self.get_error(),
+			)
+		)
 			
-		# ~ self._setJobData(full_path, size, sd, user=user)
-		# ~ if self._selectedFile is not None:
-			# ~ self._selectedFile["estimatedPrintTime"] = estimatedprintTime
-			# ~ self._selectedFile["estimatedPrintTimeType"] = "analysis"
-		# ~ self._stateMonitor.set_state(
-			# ~ self._dict(
-				# ~ text=self.get_state_string(),
-				# ~ flags=self._getStateFlags(),
-				# ~ error=self.get_error(),
-			# ~ )
-		# ~ )
-		
-		# ~ self._create_estimator()
-		
-		# ~ if self._printAfterSelect:
-			# ~ self._printAfterSelect = False
-			# ~ self.start_print(pos=self._posAfterSelect, user=user)
+		self._create_estimator()
+			
+		if self._printAfterSelect:
+			self._printAfterSelect = False
+			self.start_print(pos=self._posAfterSelect, user=user)
 	
 	def get_fileType(self,path):
 		tree = full_extension_tree()["machinecode"]

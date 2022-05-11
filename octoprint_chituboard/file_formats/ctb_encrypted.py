@@ -162,12 +162,12 @@ class CTBPreview(LittleEndianStruct):
 REPEAT_RGB15_MASK: int = 1 << 5
 
 def can_process(filename: str):
-	with open(str(path), "rb") as file:
+	with open(filename, "rb") as file:
 			ctb_header = CTBEncryptedHeader.unpack(file.read(CTBEncryptedHeader.get_size()))
 			if ctb_header.magic == MAGIC_CTB_ENCRYPTED:
 				return CTBEncryptedFile
-            else:
-                return CTBFile
+			else:
+				return CTBFile
 
 def _read_image(width: int, height: int, data: bytes) -> png.Image:
 	""" 
