@@ -99,6 +99,5 @@ def computeSHA256Hash(input: bytes):
 def xorCipher(text: bytes, key: bytes):
 	output = bytearray(len(text))
 	for i in range(len(text)):
-		output.append(text[i] ^ key[i % len(key)])
-
+		output[i] = (text[i] ^ key[i % len(key)])
 	return output
