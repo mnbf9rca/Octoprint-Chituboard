@@ -240,10 +240,10 @@ def get_printarea(resolution,header,image, height):
 	maxY = float((resolutionX+col_high)*PixelSize/1000)
 	width = float(maxX-minX)
 	depth = float(maxY-minY)
-	results = {}
-	results["printing_area"] = {"minX":minX, "maxX":maxX, "minY":minY,"maxY":maxY}
-	results["dimensions"] = {"width":width, "depth":depth, "height":float(height)}
-	return results
+	return {
+		"printing_area": {"minX": minX, "maxX": maxX, "minY": minY, "maxY": maxY},
+		"dimensions": {"width": width, "depth": depth, "height": float(height)},
+	}
 
 	
 EXTENSION_TO_BED_SIZE: Mapping[str, Tuple[str, float, float, float]] = {
@@ -277,38 +277,38 @@ def _calc_print_time(header, layermark):
 	total_layers = layermark.layer_count
 	bottom_light_on_time = header.bottom_exposure
 	bottom_layers = header.bottom_count
-	
+
 	total_sec = light_on_time+light_off_time
 	total_sec = total_sec*total_layers-bottom_layers
 	bottom_sec = (bottom_light_on_time+light_off_time)*bottom_layers
-	
+
 	lift_time = lift_height/lift_speed
 	lift_time = lift_time*total_layers
-	
+
 	retract_time = (lift_height + retract_height*2) / retract_speed
 	retract_time = retract_time*total_layers
-	
+
 	return bottom_sec+total_sec+lift_time+retract_time
 
 @dataclass(frozen=True)
 class PwmsFile(SlicedModelFile):
 	@classmethod
-	def read(self, path: pathlib.Path) -> "PwmsFile":
+	def read(cls, path: pathlib.Path) -> "PwmsFile":
 		with open(str(path), "rb") as file:
 			pwms_filemark = PwmsFileMark.unpack(file.read(PwmsFileMark.get_size()))
-			
+
 			file.seek(pwms_filemark.header_offset)
 			pwms_header = PwmsHeader.unpack(file.read(PwmsHeader.get_size()))
-			
+
 			file.seek(pwms_filemark.layer_defs_offset)
 			pwms_layermark = PwmsLayerMark.unpack(file.read(PwmsLayerMark.get_size()))
-			
+
 			printer_info = _get_printer_info(path.name)
-			
+
 			height_mm = pwms_header.layer_height_mm*pwms_layermark.layer_count
-			
+
 			end_byte_offset_by_layer = []
-			for layer in range(0, pwms_layermark.layer_count):
+			for layer in range(pwms_layermark.layer_count):
 				file.seek(
 					pwms_filemark.layer_defs_offset + PwmsLayerMark.get_size() + layer * PwmsLayerDef.get_size()
 				)
@@ -317,10 +317,10 @@ class PwmsFile(SlicedModelFile):
 					layer_def.image_offset + layer_def.image_length
 				)
 			print_time = _calc_print_time(pwms_header, pwms_layermark)
-			
+
 			file.seek(pwms_filemark.layer_defs_offset + PwmsLayerMark.get_size() +  0 * PwmsLayerDef.get_size())
 			first_layer = PwmsLayerDef.unpack(file.read(PwmsLayerDef.get_size()))
-			
+
 			file.seek(first_layer.image_offset)
 			data = file.read(first_layer.image_length)
 			results = {}
@@ -340,7 +340,7 @@ class PwmsFile(SlicedModelFile):
 			#		'width':len(image),
 			#		'depth':len(image[0]),
 			#		'height': pwms_header.layer_height_mm*pwms_layermark.layer_count}
-			
+
 
 			return PwmsFile(
 				filename=path.name,
@@ -363,20 +363,20 @@ class PwmsFile(SlicedModelFile):
 			)
 			
 	@classmethod
-	def read_dict(self, path: pathlib.Path, metadata: dict) -> "PwmsFile":
+	def read_dict(cls, path: pathlib.Path, metadata: dict) -> "PwmsFile":
 		with open(str(path), "rb") as file:
 			pwms_filemark = PwmsFileMark.unpack(file.read(PwmsFileMark.get_size()))
 			file.seek(pwms_filemark.header_offset)
 			pwms_header = PwmsHeader.unpack(file.read(PwmsHeader.get_size()))
 			file.seek(pwms_filemark.layer_defs_offset)
 			pwms_layermark = PwmsLayerMark.unpack(file.read(PwmsLayerMark.get_size()))
-			
+
 			printer_info = _get_printer_info(path.name)
-			
+
 			height_mm = pwms_header.layer_height_mm*pwms_layermark.layer_count
-			
+
 			end_byte_offset_by_layer = []
-			for layer in range(0, pwms_layermark.layer_count):
+			for layer in range(pwms_layermark.layer_count):
 				file.seek(
 					pwms_filemark.layer_defs_offset + PwmsLayerMark.get_size() + layer * PwmsLayerDef.get_size()
 				)
@@ -384,7 +384,7 @@ class PwmsFile(SlicedModelFile):
 				end_byte_offset_by_layer.append(
 					layer_def.image_offset + layer_def.image_length
 				)
-				
+
 			return PwmsFile(
 				filename=path.name,
 				bed_size_mm=(

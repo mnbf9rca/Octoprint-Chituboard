@@ -172,19 +172,19 @@ def get_printarea(resolution,header,image):
 	width = float(maxX-minX)
 	depth = float(maxY-minY)
 	height = float(header.height_mm)
-	results = {}
-	results["printing_area"] = {"minX":minX, "maxX":maxX, "minY":minY,"maxY":maxY}
-	results["dimensions"] = {"width":width, "depth":depth, "height":height}
-	return results
+	return {
+		"printing_area": {"minX": minX, "maxX": maxX, "minY": minY, "maxY": maxY},
+		"dimensions": {"width": width, "depth": depth, "height": height},
+	}
 
 
 @dataclass(frozen=True)
 class PhotonFile(SlicedModelFile):
 	@classmethod
-	def read(self, path: pathlib.Path) -> "PhotonFile":
+	def read(cls, path: pathlib.Path) -> "PhotonFile":
 		with open(str(path), "rb") as file:
 			photon_header = PhotonHeader.unpack(file.read(PhotonHeader.get_size()))
-			
+
 			file.seek(photon_header.param_offset)
 			photon_param = PhotonParam.unpack(file.read(PhotonParam.get_size()))
 
@@ -195,7 +195,7 @@ class PhotonFile(SlicedModelFile):
 			printer_name = file.read(photon_slicer.machine_size).decode()
 
 			end_byte_offset_by_layer = []
-			for layer in range(0, photon_header.layer_count):
+			for layer in range(photon_header.layer_count):
 				file.seek(
 					photon_header.layer_defs_offset + layer * PhotonLayerDef.get_size()
 				)
@@ -205,7 +205,7 @@ class PhotonFile(SlicedModelFile):
 				)
 			file.seek(photon_header.layer_defs_offset + 0 * PhotonLayerDef.get_size())
 			first_layer = PhotonLayerDef.unpack(file.read(PhotonLayerDef.get_size()))
-			
+
 			file.seek(first_layer.image_offset)
 			data = file.read(first_layer.image_length)
 			results = {}
@@ -218,10 +218,9 @@ class PhotonFile(SlicedModelFile):
 				imlayer = np.array(image)
 				results = get_printarea(imlayer.shape,photon_header,imlayer)
 			except:
-				results = {}
-				results["printing_area"] = {'minX': 0.0, 'minY': 0.0}
+				results = {"printing_area": {'minX': 0.0, 'minY': 0.0}}
 				results["dimensions"] = {'width':len(image), 'depth':len(image[0]) , 'height': photon_header.height_mm}
-				
+
 
 			return PhotonFile(
 				filename=path.name,
@@ -251,10 +250,10 @@ class PhotonFile(SlicedModelFile):
 			)
 
 	@classmethod
-	def read_dict(self, path: pathlib.Path, metadata: dict) -> "PhotonFile":
+	def read_dict(cls, path: pathlib.Path, metadata: dict) -> "PhotonFile":
 		with open(str(path), "rb") as file:
 			photon_header = PhotonHeader.unpack(file.read(PhotonHeader.get_size()))
-			
+
 			file.seek(photon_header.param_offset)
 			photon_param = PhotonParam.unpack(file.read(PhotonParam.get_size()))
 
@@ -262,7 +261,7 @@ class PhotonFile(SlicedModelFile):
 			photon_slicer = PhotonSlicer.unpack(file.read(PhotonSlicer.get_size()))
 
 			end_byte_offset_by_layer = []
-			for layer in range(0, photon_header.layer_count):
+			for layer in range(photon_header.layer_count):
 				file.seek(
 					photon_header.layer_defs_offset + layer * PhotonLayerDef.get_size()
 				)
@@ -270,7 +269,7 @@ class PhotonFile(SlicedModelFile):
 				end_byte_offset_by_layer.append(
 					layer_def.image_offset + layer_def.image_length
 				)
-				
+
 			return PhotonFile(
 					filename=path.name,
 					bed_size_mm=(

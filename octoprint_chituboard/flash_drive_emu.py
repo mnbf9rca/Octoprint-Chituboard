@@ -14,7 +14,7 @@ class flash_drive_emu():
 
     def __init__(self,firstrun = False):
         self.firstrun = firstrun
-        self.errorcode = 0 
+        self.errorcode = 0
         self.error = {
             60 : "no root",
             61 : "no Pi zero",
@@ -23,42 +23,31 @@ class flash_drive_emu():
             64 : "kernelmodul not enabled",
             127 : "unknown command"
         } 
-        
+
 
         self._logger = logging.getLogger(__name__)
 
         self.filepath = "/usr/sbin/flash"
 
-        if os.path.isfile(self.filepath):
-
-            flashScriptStat = os.stat(self.filepath)
-        
-            if not(flashScriptStat.st_mode & stat.S_IRGRP):
-                raise Exception('can\'t execute Flashscript')
-            else:
-
-                if self.firstrun:
-                    command = 'sudo -S %s initRun' %(self.filepath)
-
-                else:
-                    command = 'sudo -S %s addMod' %(self.filepath)
-
-                #commandtest = "/home/pi/OctoPrint-Sla_plugin/Octoprint-SLA-Plugin/flash testfail"
-
-                p = os.system(command)
-
-                if p>>8 <= 0:  #bitshift
-                    self.errorcode = p>>8
-                    raise Exception('Flashscripttest failed')
-
-
-                #print(p)
-                #if not subprocess.call(['sudo ' + self.filepath + ' testrun']):
-                #    raise Exception('execute Flashscript as root fails')
-
-        
-        else:
+        if not os.path.isfile(self.filepath):
             raise Exception('Flashscript dont exists')
+        flashScriptStat = os.stat(self.filepath)
+
+        if not flashScriptStat.st_mode & stat.S_IRGRP:
+            raise Exception('can\'t execute Flashscript')
+        command = (
+            f'sudo -S {self.filepath} initRun'
+            if self.firstrun
+            else f'sudo -S {self.filepath} addMod'
+        )
+
+        #commandtest = "/home/pi/OctoPrint-Sla_plugin/Octoprint-SLA-Plugin/flash testfail"
+
+        p = os.system(command)
+
+        if p>>8 <= 0:  #bitshift
+            self.errorcode = p>>8
+            raise Exception('Flashscripttest failed')
 
 
 
@@ -68,11 +57,11 @@ if __name__ == '__main__':
 
     try: 
         test =  flash_drive_emu()
-        
+
 
     except Exception as error:
-        print('Caught this error: ' + repr(error))
+        print(f'Caught this error: {repr(error)}')
         sys.exit()
-        
+
 
     print(dir(test))

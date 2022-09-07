@@ -44,7 +44,7 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 			)
 		):
 			return self._current.analysis
-		
+
 		try:
 			command = [
 				sys.executable,
@@ -52,10 +52,11 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 				"octoprint",
 				"plugins",
 				"chituboard:sla_analysis",
+				self._current.absolute_path,
 			]
-			command.append(self._current.absolute_path)
-			self._logger.debug("Invoking analysis commands: {}".format(" ".join(command)))
-		
+
+			self._logger.debug(f'Invoking analysis commands: {" ".join(command)}')
+
 			self._aborted = False
 			p = sarge.run(
 				command, close_fds=CLOSE_FDS, async_=True, stdout=sarge.Capture()
@@ -72,12 +73,10 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 			# by now we should have a command, let's wait for its
 			# process to have been prepared
 			p.commands[0].process_ready.wait()
-			
+
 			if not p.commands[0].process:
 				# the process might have been set to None in case of any exception
-				raise RuntimeError(
-					"Error while trying to run command {}".format(" ".join(command))
-				)
+				raise RuntimeError(f'Error while trying to run command {" ".join(command)}')
 			try:
 				# let's wait for stuff to finish
 				while p.returncode is None:
@@ -91,7 +90,7 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 				p.close()
 			output = p.stdout.text
 			self._logger.debug("Got output: {!r}".format(output))
-			
+
 			result = {}
 			if "ERROR:" in output:
 				_, error = output.split("ERROR:")
@@ -118,12 +117,12 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 					analysis["total_time"] = analysis["print_time_secs"]
 				except Exception as inst:
 					self._logger.debug("yaml load output failed, analysis type:", inst)
-				
+
 				result["printingArea"] = analysis["printing_area"]
 				result["dimensions"] = analysis["dimensions"]
 				if analysis["total_time"]:
 					result["estimatedPrintTime"] = analysis["print_time_secs"]
-					
+
 				if analysis["volume"]:
 					result["filament"] = {}
 					radius = 1.75/2
@@ -144,7 +143,7 @@ class sla_AnalysisQueue(AbstractAnalysisQueue):
 			else:
 				return result
 		except Exception as inst:
-			self._logger.debug("Analysis for {} ran into error: {}".format(self._current, inst))
+			self._logger.debug(f"Analysis for {self._current} ran into error: {inst}")
 		finally:
 			self._gcode = None	
 

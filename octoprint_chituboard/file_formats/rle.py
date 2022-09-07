@@ -24,7 +24,7 @@ def read_image(width: int, height: int, data: bytes) -> png.Image:
 		if color16 & REPEAT_RGB15_MASK:
 			repeat += int(struct.unpack_from("<H", data, i)[0]) & 0xFFF
 			i += 2
-			
+
 		# Retrieve color components and make pygame color tuple
 		(r, g, b) = (
 			(color16 >> 0) & 0x1F,
@@ -48,42 +48,37 @@ def read_image(width: int, height: int, data: bytes) -> png.Image:
 	return png.from_array(array, "RGB;5")
 	
 def read_grayimage(width: int, height: int, data: bytes) -> png.Image:
-    limit = width * height
-    array: List[List[int]] = [[]]
-    lastColor = 0xff
-    (i, x) = (0, 0)
-    n = 0
-    # i = index
-    while n < len(data):
-        code = struct.unpack_from("<B", data, n)[0]
-        n += 1
-        if (code & 0x80) == 0x80:
-            # Convert from 0..124 to 8bpp
-            lastColor = ((code & 0x7f) << 1) | (code & 1)
-            if lastColor >= 0xfc:
-                # Make 'white' actually white
-                lastColor = 0xff
-            if i < limit: 
-                array[-1] += [lastColor]
-                x += 1
-                if x == width:
-                    x = 0
-                    array.append([])
-            i += 1
-        else:
-            index = 0
-            while index < int(code):
-                if i < limit:
-                    array[-1] += [lastColor]
-                    x += 1
-                    if x == width:
-                        x = 0
-                        array.append([])
-                i += 1
-                index += 1
-
-    array.pop()
-    return png.from_array(array, "L")
+	limit = width * height
+	array: List[List[int]] = [[]]
+	lastColor = 0xff
+	(i, x) = (0, 0)
+	    # i = index
+	for n in range(len(data)):
+		code = struct.unpack_from("<B", data, n)[0]
+		if (code & 0x80) == 0x80:
+			# Convert from 0..124 to 8bpp
+			lastColor = ((code & 0x7f) << 1) | (code & 1)
+			if lastColor >= 0xfc:
+			    # Make 'white' actually white
+			    lastColor = 0xff
+			if i < limit: 
+			    array[-1] += [lastColor]
+			    x += 1
+			    if x == width:
+			        x = 0
+			        array.append([])
+			i += 1
+		else:
+			for _ in range(int(code)):
+				if i < limit:
+				    array[-1] += [lastColor]
+				    x += 1
+				    if x == width:
+				        x = 0
+				        array.append([])
+				i += 1
+	array.pop()
+	return png.from_array(array, "L")
 
 def read_rle1image(width: int, height: int, data: bytes) -> png.Image:
 	array: List[List[int]] = [[]]
@@ -97,16 +92,16 @@ def read_rle1image(width: int, height: int, data: bytes) -> png.Image:
 		repeat = 1
 		if grey & ~(1 << 7):
 			repeat = nr
-	
+
 		while repeat > 0:
 			array[-1] += [L]
 			repeat -= 1
-	
+
 			x += 1
 			if x == width:
 				x = 0
 				array.append([])
-	
+
 	array.pop()
 	return png.from_array(array, "L;1")
 	
@@ -157,7 +152,7 @@ def read_rle7image(width: int, height: int, data: bytes) -> png.Image:
 		# If a run is present, its length is encoded in the following 1-4 bytes.
 		code = grey
 		repeat = 1
-		if (grey & 0x80) == 0x80:
+		if code & 0x80 == 0x80:
 			# Its a run
 			code = code & 0x7f# value of pixel 0-127
 			i+=1
@@ -198,7 +193,7 @@ def read_rle7image(width: int, height: int, data: bytes) -> png.Image:
 		# Bit extend from 7-bit to 8-bit greymap
 		if (code != 0):
 			code = ((code << 1) | 1)
-			
+
 		while repeat > 0:# and len(array) < height+1:
 			array[-1] += [code]
 			repeat -= 1
@@ -208,47 +203,42 @@ def read_rle7image(width: int, height: int, data: bytes) -> png.Image:
 				x = 0
 				array.append([])
 		i+=1
-			
+
 	array.pop()
-	return png.from_array(array[0:-1], "L")
+	return png.from_array(array[:-1], "L")
 	
 def read_grayarray(width: int, height: int, data: bytes):
-    limit = width * height
-    array: List[List[int]] = [[]]
-    lastColor = 0xff
-    (i, x) = (0, 0)
-    n = 0
-    # i = index
-    while n < len(data):
-        code = struct.unpack_from("<B", data, n)[0]
-        n += 1
-        if (code & 0x80) == 0x80:
-            # Convert from 0..124 to 8bpp
-            lastColor = ((code & 0x7f) << 1) | (code & 1)
-            if lastColor >= 0xfc:
-                # Make 'white' actually white
-                lastColor = 0xff
-            if i < limit: 
-                array[-1] += [lastColor]
-                x += 1
-                if x == width:
-                    x = 0
-                    array.append([])
-            i += 1
-        else:
-            index = 0
-            while index < int(code):
-                if i < limit:
-                    array[-1] += [lastColor]
-                    x += 1
-                    if x == width:
-                        x = 0
-                        array.append([])
-                i += 1
-                index += 1
-
-    array.pop()
-    return array
+	limit = width * height
+	array: List[List[int]] = [[]]
+	lastColor = 0xff
+	(i, x) = (0, 0)
+	    # i = index
+	for n in range(len(data)):
+		code = struct.unpack_from("<B", data, n)[0]
+		if (code & 0x80) == 0x80:
+			# Convert from 0..124 to 8bpp
+			lastColor = ((code & 0x7f) << 1) | (code & 1)
+			if lastColor >= 0xfc:
+			    # Make 'white' actually white
+			    lastColor = 0xff
+			if i < limit: 
+			    array[-1] += [lastColor]
+			    x += 1
+			    if x == width:
+			        x = 0
+			        array.append([])
+			i += 1
+		else:
+			for _ in range(int(code)):
+				if i < limit:
+				    array[-1] += [lastColor]
+				    x += 1
+				    if x == width:
+				        x = 0
+				        array.append([])
+				i += 1
+	array.pop()
+	return array
 
 
 def read_rle1array(width: int, height: int, data: bytes):
@@ -263,16 +253,16 @@ def read_rle1array(width: int, height: int, data: bytes):
 		repeat = 1
 		if grey & ~(1 << 7):
 			repeat = nr
-	
+
 		while repeat > 0:
 			array[-1] += [L]
 			repeat -= 1
-	
+
 			x += 1
 			if x == width:
 				x = 0
 				array.append([])
-	
+
 	array.pop()
 	return array
 	
@@ -323,7 +313,7 @@ def read_rle7array(width: int, height: int, data: bytes):
 		# If a run is present, its length is encoded in the following 1-4 bytes.
 		code = grey
 		repeat = 1
-		if (grey & 0x80) == 0x80:
+		if code & 0x80 == 0x80:
 			# Its a run
 			code = code & 0x7f# value of pixel 0-127
 			i+=1
@@ -364,7 +354,7 @@ def read_rle7array(width: int, height: int, data: bytes):
 		# Bit extend from 7-bit to 8-bit greymap
 		if (code != 0):
 			code = ((code << 1) | 1)
-			
+
 		while repeat > 0:# and len(array) < height+1:
 			array[-1] += [code]
 			repeat -= 1
@@ -374,6 +364,6 @@ def read_rle7array(width: int, height: int, data: bytes):
 				x = 0
 				array.append([])
 		i+=1
-			
+
 	array.pop()
 	return array
