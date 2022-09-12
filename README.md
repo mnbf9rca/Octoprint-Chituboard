@@ -79,7 +79,7 @@ It will set up a folder on the Pi as a USB drive using the USB-OTG, create a sam
 
 ### Download
 Either from this Github or using
-`wget https://raw.githubusercontent.com/rudetrooper/Octoprint-Chituboard/main/Chituboard.sh`
+`wget https://raw.githubusercontent.com/mnbf9rca/Octoprint-Chituboard/main/Chituboard.sh`
 
 ### Prepare for execution
 `sudo chmod +x ./Chituboard.sh`
