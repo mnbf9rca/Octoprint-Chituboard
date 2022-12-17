@@ -24,7 +24,7 @@ class SlicedModelFile(ABC):
 
 	@classmethod
 	@abstractmethod
-	def read(self, path: pathlib.Path) -> "SlicedModelFile":
+	def read(cls, path: pathlib.Path) -> "SlicedModelFile":
 		...
 
 	@classmethod
@@ -34,5 +34,5 @@ class SlicedModelFile(ABC):
 		
 	@classmethod
 	@abstractmethod
-	def read_dict(self, path: pathlib.Path, metadata: dict) -> "SlicedModelFile":
+	def read_dict(cls, path: pathlib.Path, metadata: dict) -> "SlicedModelFile":
 		...

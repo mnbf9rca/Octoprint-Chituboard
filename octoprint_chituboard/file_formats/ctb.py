@@ -138,7 +138,7 @@ def _read_image(width: int, height: int, data: bytes) -> png.Image:
 		if color16 & REPEAT_RGB15_MASK:
 			repeat += int(struct.unpack_from("<H", data, i)[0]) & 0xFFF
 			i += 2
-			
+
 		# Retrieve color components and make pygame color tuple
 		(r, g, b) = (
 			(color16 >> 0) & 0x1F,
@@ -189,22 +189,22 @@ def get_printarea(resolution,header,image):
 	width = float(maxX-minX)
 	depth = float(maxY-minY)
 	height = float(header.height_mm)
-	results = {}
-	results["printing_area"] = {"minX":minX, "maxX":maxX, "minY":minY,"maxY":maxY}
-	results["dimensions"] = {"width":width, "depth":depth, "height":height}
-	return results
+	return {
+		"printing_area": {"minX": minX, "maxX": maxX, "minY": minY, "maxY": maxY},
+		"dimensions": {"width": width, "depth": depth, "height": height},
+	}
 
 
 @dataclass(frozen=True)
 class CTBFile(SlicedModelFile):
 	@classmethod
-	def read(self, path: pathlib.Path) -> "CTBFile":
+	def read(cls, path: pathlib.Path) -> "CTBFile":
 		with open(str(path), "rb") as file:
 			ctb_header = CTBHeader.unpack(file.read(CTBHeader.get_size()))
-			
+
 			file.seek(ctb_header.param_offset)
 			ctb_param = CTBParam.unpack(file.read(CTBParam.get_size()))
-			
+
 			file.seek(ctb_header.slicer_offset)
 			ctb_slicer = CTBSlicer.unpack(file.read(CTBSlicer.get_size()))
 
@@ -212,16 +212,16 @@ class CTBFile(SlicedModelFile):
 			printer_name = file.read(ctb_slicer.machine_size).decode()
 
 			end_byte_offset_by_layer = []
-			for layer in range(0, ctb_header.layer_count):
+			for layer in range(ctb_header.layer_count):
 				file.seek(ctb_header.layer_defs_offset + layer * CTBLayerDef.get_size())
 				layer_def = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
 				end_byte_offset_by_layer.append(
 					layer_def.image_offset + layer_def.image_length
 				)
-			
+
 			file.seek(ctb_header.layer_defs_offset + 0 * CTBLayerDef.get_size())
 			first_layer = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
-			
+
 			file.seek(first_layer.image_offset)
 			data = file.read(first_layer.image_length)
 			results = {}
@@ -266,18 +266,18 @@ class CTBFile(SlicedModelFile):
 			)
 	
 	@classmethod
-	def read_dict(self, path: pathlib.Path, metadata: dict) -> "CTBFile":
+	def read_dict(cls, path: pathlib.Path, metadata: dict) -> "CTBFile":
 		with open(str(path), "rb") as file:
 			ctb_header = CTBHeader.unpack(file.read(CTBHeader.get_size()))
-			
+
 			file.seek(ctb_header.param_offset)
 			ctb_param = CTBParam.unpack(file.read(CTBParam.get_size()))
-			
+
 			file.seek(ctb_header.slicer_offset)
 			ctb_slicer = CTBSlicer.unpack(file.read(CTBSlicer.get_size()))
-			
+
 			end_byte_offset_by_layer = []
-			for layer in range(0, ctb_header.layer_count):
+			for layer in range(ctb_header.layer_count):
 				file.seek(ctb_header.layer_defs_offset + layer * CTBLayerDef.get_size())
 				layer_def = CTBLayerDef.unpack(file.read(CTBLayerDef.get_size()))
 				end_byte_offset_by_layer.append(

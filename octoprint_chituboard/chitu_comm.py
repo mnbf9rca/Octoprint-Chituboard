@@ -100,11 +100,11 @@ class chitu_comm():
         """
     def listen_request(self):
         self.file_is_uploading = False
-        
+
         self.s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        
+
         self.s.bind(('',3000))
         self.s.settimeout(2)
         port = 3000
@@ -112,7 +112,7 @@ class chitu_comm():
         # ~ file_handler = None
         # ~ uploaded_file_path = None
         # ~ shutdownSig = False
-        
+
         while True:
             #print(conn.recv())
             #if conn.recv() == "shutdown":
@@ -122,42 +122,42 @@ class chitu_comm():
                 m = self.s.recvfrom(4096)
             except socket.timeout:
                 continue
-    
+
             except KeyboardInterrupt:
                 self.s.close()
                 break
             ############################################
             #file upload processing
             ############################################
-            
+
             if self.file_is_uploading is True:
                 if "M4012 I1" in m[0].decode('latin-1'):
                     self._logger.info("recive M4012 I1")
-                    
+
                     #print("%s count" % (struct.unpack("<i",message_end_part)[0] 
-                    
-                    answer = "ok "+ str(last_file_position_count)+"/1"
+
+                    answer = f"ok {str(last_file_position_count)}/1"
                     answer_as_bytes = str.encode(answer)
                     self.s.sendto(answer_as_bytes,m[1])
-                    
+
                     continue     
-    
-    
+
+
                 if "M29" in m[0].decode('latin-1'):
                     self._logger.info("recive M29 end file upload")
-                    self.sup._logger.info("end fileupload of file: "+uploaded_file_path)
-    
+                    self.sup._logger.info(f"end fileupload of file: {uploaded_file_path}")
+
                     self.file_handler.close()
-    
+
                     self.file_is_uploading = False
-    
+
                     self.s.sendto(self.ok_answer,m[1])
                     continue
-    
+
                 message_end_part = m[0][len(m[0])-6:len(m[0])-2]
                 last_file_position_count = struct.unpack("<i",message_end_part)[0] + len(m[0])-6
-    
-    
+
+
                 #TODO:byte len(m[0])-1 ist die "prüfsumme" 
                 # muss noch validiert werden.
                 #wenn prüfsumme falsch sende resend antwort
@@ -169,57 +169,71 @@ class chitu_comm():
                 }
                 
                 """
-    
-                self.file_handler.write(m[0][0:len(m[0])-6])
-    
+
+                self.file_handler.write(m[0][:len(m[0])-6])
+
                 last_file_position_count = struct.unpack("<i",message_end_part)[0] + len(m[0])-6
-    
+
                 self.s.sendto(self.ok_answer,m[1])
                 continue
-    
+
             #############################################
-    
+
             if m[0] == b'M99999':#to find printer in network
                 self._logger.info("recive M99999 broadcast message")
-    
-                answer = 'ok MAC:'+ self.mac +' IP:'+self.ip.encode("utf-8")+' VER:'+self.version+' ID:'+self.id+' NAME:'+self.name
+
+                answer = (
+                    f'ok MAC:{self.mac} IP:'
+                    + self.ip.encode("utf-8")
+                    + ' VER:'
+                    + self.version
+                    + ' ID:'
+                    + self.id
+                    + ' NAME:'
+                    + self.name
+                )
+
                 answer_as_bytes = str.encode(answer)
                 self.s.sendto(answer_as_bytes,m[1])
                 continue
-    
+
             if m[0] == b'M4001':
                 #ok X:0.012500 Y:0.012500 Z:0.000625 E:0.001340 T:0/0/0/155/1 U:'GBK' B:1
                 #self.log.info("recive M4001 init Message")
-                answer = "ok X:0.012500 Y:0.012500 Z:"+self.z_step_hight+" E:0.001340 T:0/0/0/155/1 U:'GBK' B:1"
+                answer = (
+                    f"ok X:0.012500 Y:0.012500 Z:{self.z_step_hight}"
+                    + " E:0.001340 T:0/0/0/155/1 U:'GBK' B:1"
+                )
+
                 answer_as_bytes = str.encode(answer)
                 self.s.sendto(answer_as_bytes,m[1])
                 continue
-    
+
             ############################################
             #file upload
             ############################################
             if "M28" in m[0].decode('latin-1'):
                 self._logger.info("recive M28 start Fileupload")
-                
-                self.nameLastUploadedFile = m[0][3:len(m[0])].decode('latin-1')
+
+                self.nameLastUploadedFile = m[0][3:].decode('latin-1')
                 self.uploaded_file_path = self.sup._settings.global_get_basefolder("watched") + "/" + self.nameLastUploadedFile
-    
+
                 try:
                     self.file_handler = open(self.uploaded_file_path, "wb")
                 except OSError as e:
-                    self.sup._logger.info("cant write to file "+ file_path +" , throwing error")
-                
+                    self.sup._logger.info(f"cant write to file {file_path} , throwing error")
+
                 self.file_is_uploading = True
                 self.s.sendto(self.ok_answer,m[1])
                 continue
-    
+
             if "M6030" in m[0].decode('latin-1'):
                 print("recive M6030 start Print")
-    
+
                 filenameToSelect = self.sup._file_manager.path_on_disk(FileDestinations.LOCAL, self.nameLastUploadedFile)
                 print(filenameToSelect)
                 self.sup.sla_printer.select_file(filenameToSelect, False, printAfterSelect=True)
-    
+
                 self.s.sendto(self.ok_answer,m[1])
                 continue
             ##self._storage(destination).file_in_path(path, file)

@@ -86,14 +86,14 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 	def allowed(self):
 		if self._settings is None:
 			#self._logger.info("settings is none: %s " % self._settings.get(["allowedExten"]))
-			return str("cbddlp, photon, ctb, fdg, pws, pw0, pwms, pwmx")
+			return "cbddlp, photon, ctb, fdg, pws, pw0, pwms, pwmx"
 		else:
 			#self._logger.info("add Extensions: %s " % self._settings.get(["allowedExten"]))
 			return str(self._settings.get(["allowedExten"]))
 	
 
 	def get_extension_tree(self, *args, **kwargs):
-		self._logger.debug("add Extensions: %s " % self.allowed)
+		self._logger.debug(f"add Extensions: {self.allowed} ")
 		return dict(machinecode=dict(sla_bin=ContentTypeMapping(self.allowed.replace(" ", "").split(","), "application/octet-stream")))
 
 
@@ -124,7 +124,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		return 1
 	# Todo: save serial settings after wizard finished
 	def on_wizard_finish(self, handled):
-		
+
 		self._settings.global_set(["serial", "helloCommand"], self._settings.get(["helloCommand"]))
 		self._settings.global_set(["serial", "disconnectOnErrors"], False)
 		self._settings.global_set(["serial", "firmwareDetection"], False)
@@ -152,11 +152,9 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		# and convert to string
 		result = "-"
 		if self.sla_printer._sliced_model_file and self.sla_printer.is_printing():
-			
-			result = "{}/{}".format(
-				self.sla_printer.get_current_layer(),
-				self.sla_printer._sliced_model_file.layer_count
-			)
+
+			result = f"{self.sla_printer.get_current_layer()}/{self.sla_printer._sliced_model_file.layer_count}"
+
 		return flask.jsonify(layerString = result)
 	
 	##############################################
@@ -168,11 +166,9 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 			return
 		result = "-"
 		if self.sla_printer._sliced_model_file:
-			
-			result = "{}/{}".format(
-				self.sla_printer.get_current_layer(),
-				self.sla_printer._sliced_model_file.layer_count
-			)
+
+			result = f"{self.sla_printer.get_current_layer()}/{self.sla_printer._sliced_model_file.layer_count}"
+
 		self._plugin_manager.send_plugin_message("Chituboard",dict(layerString = result))
 	
 	##############################################
@@ -364,7 +360,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		matchX = self.parse_M4000["floatX"].search(line)
 		matchY = self.parse_M4000["floatY"].search(line)
 		matchZ = self.parse_M4000["floatZ"].search(line)
-		
+
 		if matchB:
 			try:
 				#print(matchB.group(0), matchB.group('actual'))
@@ -373,7 +369,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 			except Exception as inst:
 				self._logger.info("Error parsing M400 response ", type(inst), inst)
 			else:
-				rewritten = line.replace(matchB.group(0), " T:0 /0 B:{} /{}\r\n".format(actual,target))
+				rewritten = line.replace(matchB.group(0), f" T:0 /0 B:{actual} /{target}\r\n")
 		if matchD and self.sla_printer.is_pausing():
 			try:
 				current = int(matchD.group('current'))
@@ -390,8 +386,8 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 					Ypos = matchY.group("value")
 					Zpos = matchZ.group("value")
 					self._logger.info("printer paused from parse M4000")
-					rewritten = "ok X:{} Y:{} Z:{} E:0.000000".format(Xpos, Ypos, Zpos)
-					
+					rewritten = f"ok X:{Xpos} Y:{Ypos} Z:{Zpos} E:0.000000"
+
 		if rewritten:
 			self._log_to_terminal(rewritten)
 			return rewritten
@@ -415,28 +411,24 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		ok C: X:0.000000 Y:0.000000 Z:60.000000 E:0.000000
 		strip C: from line
 		"""
-		if "C: X:" in line:
-			rewritten = self.fix_M114.sub("", line)
-			self._log_to_terminal(rewritten)
-			return rewritten
-		else:
+		if "C: X:" not in line:
 			return line
+		rewritten = self.fix_M114.sub("", line)
+		self._log_to_terminal(rewritten)
+		return rewritten
 		
 	def _rewrite_wait_to_busy(self, line):
-		# firmware wrongly assumes "wait" to mean "busy", fix that
-		# Used Code from Foosel Octoprint-FixCBDFirmware plugin
-		if line == "wait" or line.startswith("wait"):
-			self._log_replacement("wait", "wait", "echo:busy processing", only_once=True)
-			return "echo:busy processing"
-		else:
+		if line != "wait" and not line.startswith("wait"):
 			return line
+		self._log_replacement("wait", "wait", "echo:busy processing", only_once=True)
+		return "echo:busy processing"
 	
 	def _rewrite_start(self, line):
 		if line.startswith('ok V'): # proceed hello command # ok V4.2.20.3_LCDM
 			# harvest firmware version to generate a proper aswer to M115
 			self.firmware_version = line[3:]
-			self._log_replacement("start command",line, "ok start", only_once=True)	
-			return 'ok start' + line
+			self._log_replacement("start command",line, "ok start", only_once=True)
+			return f'ok start{line}'
 		return line
 		
 	def _rewrite_error(self, line):
@@ -446,26 +438,33 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		print behavior in comm.py monitoring loop
 		'Error:It's not printing now!' -> 'Not SD printing'
 		"""
-		if "not printing now" in line:
-			if self._printer.is_printing() or self._printer.is_finishing():
-				self.finished_print = None
-				self._log_replacement("Not SD printing", line, "Not SD printing", only_once=True)
-				self._printer.unselect_file()
-				self._printer._comm._changeState(self._printer._comm.STATE_OPERATIONAL)
-				self._printer._comm._currentFile = None
-				self._logger.debug("printer now operational")
-			return "Not SD printing"
-		else:
+		if "not printing now" not in line:
 			return line
+		if self._printer.is_printing() or self._printer.is_finishing():
+			self.finished_print = None
+			self._log_replacement("Not SD printing", line, "Not SD printing", only_once=True)
+			self._printer.unselect_file()
+			self._printer._comm._changeState(self._printer._comm.STATE_OPERATIONAL)
+			self._printer._comm._currentFile = None
+			self._logger.debug("printer now operational")
+		return "Not SD printing"
 		
 	def _rewrite_identifier(self, line):
 		# change identifier to signal stuff is fixed so that printer safety no longer triggers
 		rewritten = None
 		if "CBD make it" in line:
 			# ~ rewritten = line.replace("CBD make it", "CBD made it, foosel fixed it")
-			rewritten = line.replace("CBD make it.", "FIRMWARE_NAME:{} PROTOCOL_VERSION:{} ".format("CBD made it", self.firmware_version))
+			rewritten = line.replace(
+				"CBD make it.",
+				f"FIRMWARE_NAME:CBD made it PROTOCOL_VERSION:{self.firmware_version} ",
+			)
+
 		elif "ZWLF make it" in line:
-			rewritten = line.replace("ZWLF make it", "FIRMWARE_NAME:{} PROTOCOL_VERSION:{} ".format("ZWLF made it", self.firmware_version))
+			rewritten = line.replace(
+				"ZWLF make it",
+				f"FIRMWARE_NAME:ZWLF made it PROTOCOL_VERSION:{self.firmware_version} ",
+			)
+
 
 		if rewritten:
 			self._log_replacement("identifier", line, rewritten)
@@ -479,19 +478,18 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		Possible ending messages:
 		at the end of  End read
 		"""
-		if "End read" in line:
-			try:
-				self.sla_printer._comm._changeState(self.sla_printer._comm.STATE_FINISHING)
-				self.sla_printer._comm._currentFile.done = True
-				self.sla_printer._comm._currentFile.pos = 0
-				self.sla_printer._sliced_model_file = None
-				self.sla_printer._comm._callback.on_comm_print_job_done()
-
-			except Exception:
-				self._logger.exception("Error while changing state")
-			return line + "\r\n Done printing file", True
-		else:	
+		if "End read" not in line:
 			return line, False
+		try:
+			self.sla_printer._comm._changeState(self.sla_printer._comm.STATE_FINISHING)
+			self.sla_printer._comm._currentFile.done = True
+			self.sla_printer._comm._currentFile.pos = 0
+			self.sla_printer._sliced_model_file = None
+			self.sla_printer._comm._callback.on_comm_print_job_done()
+
+		except Exception:
+			self._logger.exception("Error while changing state")
+		return line + "\r\n Done printing file", True
 			
 	def _rewrite_print_finished(self,line):
 		"""
@@ -502,9 +500,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 		- temporary fix: manually trigger file unselect to stop SD polling
 		"""
 		if "SD printing byte" in line:
-			# answer to M27, at least on Marlin, Repetier and Sprinter: "SD printing byte %d/%d"
-			match = self.regex_sdPrintingByte.search(line)
-			if match:
+			if match := self.regex_sdPrintingByte.search(line):
 				try:
 					current = int(match.group("current"))
 					total = int(match.group("total"))
@@ -516,7 +512,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 				else:
 					if current == total != 0:
 						eventManager().fire(Events.PLUGIN_CHITUBOARD_LAYER_CHANGE)
-						if self.finished_print == None:
+						if self.finished_print is None:
 							self.finished_print = 1
 							self._logger.info("finished print = None")
 							return line, False
@@ -533,7 +529,7 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 							self.sla_printer.unselect_file()
 							self.sla_printer._sliced_model_file = None
 							# ~ self._printer._comm._currentFile = None
-							self.finished_print == None
+							self.finished_print is None
 							return line, False
 						else:
 							return line, False
@@ -542,23 +538,21 @@ class Chituboard(   octoprint.plugin.SettingsPlugin,
 	def _log_replacement(self, t, orig, repl, only_once=False):
 		# Used Code from Foosel Octoprint-FixCBDFirmware plugin
 		if not only_once or not self._logged_replacement.get(t, False):
-			self._logger.info("Replacing {} with {}".format(orig, repl))
+			self._logger.info(f"Replacing {orig} with {repl}")
 			self._logged_replacement[t] = True
 			if only_once:
 				self._logger.info(
 					"Further replacements of this kind will be logged at DEBUG level."
 				)
 		else:
-			self._logger.debug("Replacing {} with {}".format(orig, repl))
-		self._log_to_terminal("{} -> {}".format(orig, repl))
+			self._logger.debug(f"Replacing {orig} with {repl}")
+		self._log_to_terminal(f"{orig} -> {repl}")
 		
 	def _log_to_terminal(self, *lines, **kwargs):
 		# Used Code from Foosel Octoprint-FixCBDFirmware plugin
 		prefix = kwargs.pop(b"prefix", "Repl:")
 		if self._printer:
-			self._printer.log_lines(
-				*list(map(lambda x: "{} {}".format(prefix, x), lines))
-			)
+			self._printer.log_lines(*list(map(lambda x: f"{prefix} {x}", lines)))
 
 	##############################################
 	#			   Plugin Update				#

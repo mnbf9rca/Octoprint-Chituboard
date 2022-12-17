@@ -199,17 +199,17 @@ def _calc_print_time(header, layermark):
 	total_layers = layermark.layer_count
 	bottom_light_on_time = header.bottom_exposure
 	bottom_layers = header.bottom_count
-	
+
 	total_sec = light_on_time+light_off_time
 	total_sec = total_sec*total_layers-bottom_layers
 	bottom_sec = (bottom_light_on_time+light_off_time)*bottom_layers
-	
+
 	lift_time = lift_height/lift_speed
 	lift_time = lift_time*total_layers
-	
+
 	retract_time = (lift_height + retract_height*2) / retract_speed
 	retract_time = retract_time*total_layers
-	
+
 	return bottom_sec+total_sec+lift_time+retract_time
 	
 def _read_layer(width: int, height: int, layernum:int, data: bytes) -> png.Image:	
@@ -236,27 +236,27 @@ def get_printarea(resolution,header,image, height):
 	maxY = float((resolutionX+col_high)*PixelSize/1000)
 	width = float(maxX-minX)
 	depth = float(maxY-minY)
-	results = {}
-	results["printing_area"] = {"minX":minX, "maxX":maxX, "minY":minY,"maxY":maxY}
-	results["dimensions"] = {"width":width, "depth":depth, "height":float(height)}
-	return results
+	return {
+		"printing_area": {"minX": minX, "maxX": maxX, "minY": minY, "maxY": maxY},
+		"dimensions": {"width": width, "depth": depth, "height": float(height)},
+	}
 
 @dataclass(frozen=True)
 class PwsFile(SlicedModelFile):
 	@classmethod
-	def read(self, path: pathlib.Path) -> "PwsFile":
+	def read(cls, path: pathlib.Path) -> "PwsFile":
 		with open(str(path), "rb") as file:
 			pws_filemark = PwsFileMark.unpack(file.read(PwsFileMark.get_size()))
 			pws_header = PwsHeader.unpack(file.read(PwsHeader.get_size()))
 			pws_layermark = PwsLayerMark.unpack(file.read(PwsLayerMark.get_size()))
-						
+
 			printer_info = _get_printer_info(path.name)
 			printer_name = printer_info[0]
-			
+
 			height_mm = pws_header.layer_height_mm*pws_layermark.layer_count
-			
+
 			end_byte_offset_by_layer = []
-			for layer in range(0, pws_layermark.layer_count):
+			for layer in range(pws_layermark.layer_count):
 				file.seek(
 					pws_filemark.layer_defs_offset + PwsLayerMark.get_size() + layer * PwsLayerDef.get_size()
 				)
@@ -265,10 +265,10 @@ class PwsFile(SlicedModelFile):
 					layer_def.image_offset + layer_def.image_length
 				)
 			print_time = _calc_print_time(pws_header, pws_layermark)
-			
+
 			file.seek(pws_filemark.layer_defs_offset + PwsLayerMark.get_size() +  0 * PwsLayerDef.get_size())
 			first_layer = PwsLayerDef.unpack(file.read(PwsLayerDef.get_size()))
-			
+
 			file.seek(first_layer.image_offset)
 			data = file.read(first_layer.image_length)
 			results = {}
@@ -287,8 +287,8 @@ class PwsFile(SlicedModelFile):
 			#		'width':len(image),
 			#		'depth':len(image[0]),
 			#		'height': pws_header.layer_height_mm*pws_layermark.layer_count}
-						
-			
+
+
 			return PwsFile(
 				filename=path.name,
 				bed_size_mm=(
@@ -312,19 +312,19 @@ class PwsFile(SlicedModelFile):
 
 
 	@classmethod
-	def read_dict(self, path: pathlib.Path, metadata: dict) -> "PwsFile":
+	def read_dict(cls, path: pathlib.Path, metadata: dict) -> "PwsFile":
 		with open(str(path), "rb") as file:
 			pws_filemark = PwsFileMark.unpack(file.read(PwsFileMark.get_size()))
 			pws_header = PwsHeader.unpack(file.read(PwsHeader.get_size()))
 			pws_layermark = PwsLayerMark.unpack(file.read(PwsLayerMark.get_size()))
-						
+
 			printer_info = _get_printer_info(path.name)
 			printer_name = printer_info[0]
-			
+
 			height_mm = pws_header.layer_height_mm*pws_layermark.layer_count
-			
+
 			end_byte_offset_by_layer = []
-			for layer in range(0, pws_layermark.layer_count):
+			for layer in range(pws_layermark.layer_count):
 				file.seek(
 					pws_filemark.layer_defs_offset + PwsLayerMark.get_size() + layer * PwsLayerDef.get_size()
 				)
@@ -332,7 +332,7 @@ class PwsFile(SlicedModelFile):
 				end_byte_offset_by_layer.append(
 					layer_def.image_offset + layer_def.image_length
 				)
-				
+
 			return PwsFile(
 				filename=path.name,
 				bed_size_mm=(
